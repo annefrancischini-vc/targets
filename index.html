@@ -292,7 +292,7 @@ function renderWeek(){
     ${goalsHtml}`;
 }
 
-/* Expected so far = weekly target spread over the days that have passed (today counts only after it ends) */
+/* Expected so far = weekly target × weeks started (week 1 = 1×, week 2 = 2×, ...) */
 function habitStatus(done, expected){
   const d = done - expected;
   if(d > 0) return { cls:'pos', text:`+${d}`, ok:true };
@@ -308,7 +308,6 @@ function renderReview(){
   for(let n=current; n>=0; n--){
     const bs = addDays(start, n*B*7), isCur = n===current;
     const weeksIn = isCur ? weeksBetween(bs, nowW)+1 : B;
-    const daysPassed = isCur ? Math.round((t - bs)/DAY) : B*7;
     const all = [];
     let body = '';
     state.goals.forEach(g => {
@@ -316,7 +315,7 @@ function renderReview(){
       let ge=0, gd=0;
       const rows = hs.map(h => {
         let done = 0; for(let w=0; w<weeksIn; w++) done += doneInWeek(h, addDays(bs, w*7));
-        const expected = Math.round(h.target * daysPassed / 7);
+        const expected = h.target * weeksIn;
         const s = habitStatus(done, expected); all.push({ h, s });
         ge += expected; gd += done;
         return `<tr><td>${esc(h.name)}<span class="sub">${h.target}×/wk · ${h.target*B} in total</span></td><td class="num">${expected}</td><td class="num">${done}</td><td class="st ${s.cls}">${s.text}</td></tr>`;
@@ -324,18 +323,13 @@ function renderReview(){
       const gs = habitStatus(gd, ge);
       body += `<tr class="g-row"><th scope="row">${esc(g.name)}</th><td class="num">${ge}</td><td class="num">${gd}</td><td class="st ${gs.cls}">${gs.text}</td></tr>${rows}`;
     });
-    const good = all.filter(x => x.s.ok), bad = all.filter(x => !x.s.ok);
-    const list = arr => `<div class="chips">${arr.map(x => `<span class="chip">${esc(x.h.name)}</span>`).join('')}</div>`;
+    const good = all.filter(x => x.s.ok);
     html += `<section class="block">
-      <div class="block-head"><div><span class="pill${isCur?'':' past'}">${isCur?`In progress · day ${daysPassed+1} of ${B*7}`:'Complete'}</span>
+      <div class="block-head"><div><span class="pill${isCur?'':' past'}">${isCur?`In progress · week ${weeksIn} of ${B}`:'Complete'}</span>
         <h2 style="margin-top:6px">Weeks ${isoWeek(bs)}–${isoWeek(addDays(bs,(B-1)*7))}</h2><p class="muted" style="margin:2px 0 0;font-size:14px">${rangeLabel(bs,B*7)}</p></div>
         <div style="text-align:right"><span class="big num">${good.length}/${all.length}</span><p class="muted" style="margin:2px 0 0;font-size:13px">on track</p></div></div>
-      <div class="insights one">
-        <div class="insight good"><span class="label">Going well · ${good.length}</span>${good.length ? list(good) : '<b>Nothing yet</b>'}</div>
-        <div class="insight improve"><span class="label">Going badly · ${bad.length}</span>${bad.length ? list(bad) : '<b>Nothing. Great!</b>'}</div>
-      </div>
       <div style="overflow-x:auto"><table class="pvd"><thead><tr><th>Habit</th><th>Expected</th><th>Done</th><th>±</th></tr></thead><tbody>${body}</tbody></table></div>
-      ${isCur ? `<p class="hint" style="margin:0">Expected = what you should have done by the end of yesterday, at your weekly pace. ± = done minus expected. Today counts as soon as you mark it.</p>` : ''}
+      ${isCur ? `<p class="hint" style="margin:0">Expected = weekly target × weeks so far (week 1 = 1×, week 2 = 2×…). ± = done minus expected.</p>` : ''}
     </section>`;
   }
   return html;
