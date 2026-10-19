@@ -130,6 +130,22 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:.0
 .chip{font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
 .improve .chip{background:color-mix(in srgb,var(--bad) 14%,var(--surface));color:var(--bad)}
 .pvd .st{text-align:center}
+/* this week: goal = umbrella title, tasks = compact rows */
+.goal-group{display:flex;flex-direction:column;gap:8px}
+.goal-title{font-size:26px;line-height:1.1;padding-inline:2px}
+.tasks{background:var(--surface);border-radius:14px;padding:2px 14px}
+.task{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.task:first-child{border-top:0}
+.task-main{min-width:0;display:flex;flex-direction:column;gap:6px}
+.t-top{display:flex;align-items:baseline;gap:8px}
+.t-name{flex:1;min-width:0;font-size:15px;font-weight:500;overflow-wrap:anywhere}
+.t-score{font-size:14px;color:var(--muted);white-space:nowrap}
+.t-score b{font-size:17px;color:var(--ink)}
+.t-pct{display:inline-block;min-width:3.4em;text-align:right;margin-left:4px;font-weight:600;color:var(--ink)}
+.task.hit .t-pct{color:var(--accent)}
+.task .day{height:22px;font-size:10px;border-radius:6px}
+.task .check{grid-row:auto;grid-column:auto;width:40px;height:40px;border-width:2px}
+.task .check svg{width:20px;height:20px}
 /* tab bar + toast */
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:5;
   padding:6px max(16px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
@@ -245,54 +261,34 @@ async function toggle(habitId, date){
 /* ---------- 4. Screens ---------- */
 const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 
-function paceHint(h, ws, isCurrent){
-  const done = doneInWeek(h, ws), left = h.target - done;
-  if(left <= 0) return `<p class="hint ok">Target reached${done>h.target?` (+${done-h.target} extra)`:''}</p>`;
-  if(!isCurrent) return `<p class="hint bad">Missed by ${left}</p>`;
-  const t = today(); let free = 0;
-  for(let i=0;i<7;i++){ const d = addDays(ws,i); if(d>=t && !isDone(h.id, ymd(d))) free++; }
-  if(left > free) return `<p class="hint bad">Out of reach this week. Max ${done+free} of ${h.target}.</p>`;
-  if(left === free) return `<p class="hint warn">${left} to go, ${free} ${free===1?'day':'days'} left. No rest days now.</p>`;
-  return `<p class="hint">${left} to go, ${free} days left</p>`;
-}
-
 function renderWeek(){
   const ws = addDays(mondayOf(today()), ui.weekOffset*7);
   const isCurrent = ui.weekOffset===0, t = ymd(today());
-  let sumDone=0, sumTarget=0;
   const goalsHtml = state.goals.map(g => {
-    const hs = habitsOf(g.id); let gd=0, gt=0;
+    const hs = habitsOf(g.id); if(!hs.length) return '';
     const rows = hs.map(h => {
-      const done = doneInWeek(h, ws); gd += Math.min(done,h.target); gt += h.target;
+      const done = doneInWeek(h, ws), p = pct(done, h.target), onToday = isDone(h.id, t);
       const days = LETTERS.map((L,i) => {
         const d = ymd(addDays(ws,i)), on = isDone(h.id,d);
         return `<button class="day${on?' done':''}${d===t?' today':''}" data-act="toggle" data-h="${esc(h.id)}" data-d="${d}" ${d>t?'disabled':''} aria-label="${L} ${d}" aria-pressed="${on}">${L}</button>`;
       }).join('');
-      const onToday = isDone(h.id, t);
-      return `<div class="habit">
-        <div class="habit-main">
-          <div class="h-top"><span class="h-name">${esc(h.name)}</span>
-            <span class="h-count num">${done}<small>/${h.target}</small></span><span class="h-pct num">${pct(done,h.target)}%</span></div>
-          <div class="bar"><i style="width:${pct(done,h.target)}%"></i></div>
+      return `<div class="task${done>=h.target?' hit':''}">
+        <div class="task-main">
+          <div class="t-top"><span class="t-name">${esc(h.name)}</span><span class="t-score num"><b>${done}</b>/${h.target}<span class="t-pct">${p}%</span></span></div>
           <div class="days">${days}</div>
-          ${paceHint(h, ws, isCurrent)}
         </div>
-        ${isCurrent ? `<button class="check${onToday?' on':''}" data-act="toggle" data-h="${esc(h.id)}" data-d="${t}" aria-pressed="${onToday}" aria-label="${esc(h.name)} done today">${onToday?CHECK:'Done<br>today'}</button>` : ''}
+        ${isCurrent ? `<button class="check${onToday?' on':''}" data-act="toggle" data-h="${esc(h.id)}" data-d="${t}" aria-pressed="${onToday}" aria-label="${esc(h.name)} done today">${CHECK}</button>` : ''}
       </div>`;
     }).join('');
-    sumDone+=gd; sumTarget+=gt;
-    return hs.length ? `<section class="goal"><div class="goal-head"><h2>${esc(g.name)}</h2><span class="num">${pct(gd,gt)}%</span></div>${rows}</section>` : '';
+    return `<section class="goal-group"><h2 class="goal-title">${esc(g.name)}</h2><div class="tasks">${rows}</div></section>`;
   }).join('');
-  const overall = pct(sumDone,sumTarget);
   return `
     <header class="weekhead">
       <button class="arrow" data-act="prev" aria-label="Previous week" ${ws<=parse(state.start)?'disabled':''}>‹</button>
       <div style="text-align:center"><h1>${isCurrent?'This week':'Week '+isoWeek(ws)}</h1><p class="muted" style="margin:4px 0 0">Week ${isoWeek(ws)} · ${rangeLabel(ws,7)}</p></div>
       <button class="arrow" data-act="next" aria-label="Next week" ${isCurrent?'disabled':''}>›</button>
     </header>
-    <section class="score"><span class="big num">${overall}%</span><span class="muted" style="padding-bottom:6px">${sumDone} of ${sumTarget} sessions${isCurrent?' so far':''}</span></section>
-    <div class="bar"><i style="width:${overall}%"></i></div>
-    ${goalsHtml || '<p class="muted">No habits yet. Add them in the Plan tab of your Google Sheet.</p>'}`;
+    ${goalsHtml}`;
 }
 
 /* Expected so far = weekly target spread over the days that have passed (today counts only after it ends) */
