@@ -134,7 +134,7 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:.0
 .goal-group{display:flex;flex-direction:column;gap:8px}
 .goal-title{font-size:26px;line-height:1.1;padding-inline:2px}
 .tasks{background:var(--surface);border-radius:14px;padding:2px 14px}
-.task{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.task{display:grid;grid-template-columns:1fr;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
 .task:first-child{border-top:0}
 .task-main{min-width:0;display:flex;flex-direction:column;gap:6px}
 .t-top{display:flex;align-items:baseline;gap:8px}
@@ -143,7 +143,7 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:.0
 .t-score b{font-size:17px;color:var(--ink)}
 .t-pct{display:inline-block;min-width:3.4em;text-align:right;margin-left:4px;font-weight:600;color:var(--ink)}
 .task.hit .t-pct{color:var(--accent)}
-.task .day{height:22px;font-size:10px;border-radius:6px}
+.task .day{height:34px;font-size:12px;border-radius:8px}
 .task .check{grid-row:auto;grid-column:auto;width:40px;height:40px;border-width:2px}
 .task .check svg{width:20px;height:20px}
 /* tab bar + toast */
@@ -267,7 +267,7 @@ function renderWeek(){
   const goalsHtml = state.goals.map(g => {
     const hs = habitsOf(g.id); if(!hs.length) return '';
     const rows = hs.map(h => {
-      const done = doneInWeek(h, ws), p = pct(done, h.target), onToday = isDone(h.id, t);
+      const done = doneInWeek(h, ws), p = pct(done, h.target);
       const days = LETTERS.map((L,i) => {
         const d = ymd(addDays(ws,i)), on = isDone(h.id,d);
         return `<button class="day${on?' done':''}${d===t?' today':''}" data-act="toggle" data-h="${esc(h.id)}" data-d="${d}" ${d>t?'disabled':''} aria-label="${L} ${d}" aria-pressed="${on}">${L}</button>`;
@@ -277,7 +277,6 @@ function renderWeek(){
           <div class="t-top"><span class="t-name">${esc(h.name)}</span><span class="t-score num"><b>${done}</b>/${h.target}<span class="t-pct">${p}%</span></span></div>
           <div class="days">${days}</div>
         </div>
-        ${isCurrent ? `<button class="check${onToday?' on':''}" data-act="toggle" data-h="${esc(h.id)}" data-d="${t}" aria-pressed="${onToday}" aria-label="${esc(h.name)} done today">${CHECK}</button>` : ''}
       </div>`;
     }).join('');
     return `<section class="goal-group"><h2 class="goal-title">${esc(g.name)}</h2><div class="tasks">${rows}</div></section>`;
