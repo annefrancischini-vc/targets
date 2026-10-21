@@ -319,8 +319,7 @@ function renderReview(){
         ge += expected; gd += done;
         return `<tr><td>${esc(h.name)}<span class="sub">${h.target}×/wk · ${h.target*B} in total</span></td><td class="num">${expected}</td><td class="num">${done}</td><td class="st ${s.cls}">${s.text}</td></tr>`;
       }).join('');
-      const gs = habitStatus(gd, ge);
-      body += `<tr class="g-row"><th scope="row">${esc(g.name)}</th><td class="num">${ge}</td><td class="num">${gd}</td><td class="st ${gs.cls}">${gs.text}</td></tr>${rows}`;
+      body += `<tr class="g-row"><th scope="row" colspan="4">${esc(g.name)}</th></tr>${rows}`;
     });
     const good = all.filter(x => x.s.ok);
     html += `<section class="block">
