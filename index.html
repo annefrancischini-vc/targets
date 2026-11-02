@@ -146,6 +146,8 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:.0
 .task .day{height:34px;font-size:12px;border-radius:8px}
 .task .check{grid-row:auto;grid-column:auto;width:40px;height:40px;border-width:2px}
 .task .check svg{width:20px;height:20px}
+.grid30{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+.grid30 .day{height:28px;font-size:11px;border-radius:6px;padding:0;font-variant-numeric:tabular-nums}
 /* tab bar + toast */
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:5;
   padding:6px max(16px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
@@ -162,8 +164,8 @@ nav button[aria-current="page"]{color:var(--accent)}
 <main id="app"><p class="muted">Loading…</p></main>
 
 <nav><div class="tabs">
-  <button id="tab-week" data-tab="week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>This week</button>
-  <button id="tab-review" data-tab="review"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>8-week review</button>
+  <button id="tab-week" data-tab="week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Tracking</button>
+  <button id="tab-review" data-tab="review"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Review</button>
 </div></nav>
 <div id="toast" hidden></div>
 
@@ -209,18 +211,20 @@ async function api(method, body){
 }
 
 /* ---------- 3. State: everything comes from the sheet ---------- */
-// Your plan (also in the "Plan" tab of the sheet; the sheet wins when it can be reached)
+// Your plan, with targets in 30 days (the "Plan" tab of the sheet wins when it can be reached)
 const PLAN = [
-  ['5 kg lighter','gym','Gym',4], ['5 kg lighter','running','Running',3], ['5 kg lighter','no-sugar','No sugar',5], ['5 kg lighter','football','Football',1],
-  ['Healthier','no-smoking','No smoking',7], ['Healthier','stretching','Stretching',5], ['Healthier','water','Drink 3 L of water',7],
-  ['Ready for interviews','question','Practice one interview question',3], ['Ready for interviews','study','Study for 1 h',4],
-  ['Ready for interviews','listening','Listening practice, 15 min',7], ['Ready for interviews','speaking','Speaking practice, 15 min',7],
-  ['Ready for interviews','topic','Learn and explain 1 topic',3],
+  ['5 kg lighter','gym','Gym',17], ['5 kg lighter','running','Running',13], ['5 kg lighter','no-sugar','No sugar',21], ['5 kg lighter','football','Football',4],
+  ['Healthier','no-smoking','No smoking',30], ['Healthier','stretching','Stretching',21], ['Healthier','water','Drink 3 L of water',30],
+  ['Ready for interviews','question','Practice one interview question',13], ['Ready for interviews','study','Study for 1 h',17],
+  ['Ready for interviews','listening','Listening practice, 15 min',30], ['Ready for interviews','speaking','Speaking practice, 15 min',30],
+  ['Ready for interviews','topic','Learn and explain 1 topic',13],
 ].map(([goal,id,name,target]) => ({ goal, id, name, target }));
-const state = { goals:[], habits:[], checkins:new Set(), start:'2026-10-19', weeks:8 };
+const START = '2026-11-02';   // first day of the plan (a Monday)
+const CYCLE_DAYS = 30;        // each review covers 30 days
+const state = { goals:[], habits:[], checkins:new Set(), start:START };
 function setPlan(plan){
   state.goals = [...new Set(plan.map(p => p.goal))].map(name => ({ id:name, name }));
-  state.habits = plan.map(p => ({ id:p.id, goalId:p.goal, name:p.name, target:Math.max(1, Math.min(7, p.target)) }));
+  state.habits = plan.map(p => ({ id:p.id, goalId:p.goal, name:p.name, target:Math.max(1, Math.min(CYCLE_DAYS, p.target)) }));
 }
 setPlan(PLAN);
 const ui = { tab:'week', weekOffset:0 };
@@ -238,8 +242,6 @@ async function load(){
     const data = await api('GET');
     if(data.plan.length) setPlan(data.plan);
     state.checkins = new Set(data.checkins.map(c => key(c.habitId, c.date)));
-    if(/^\d{4}-\d{2}-\d{2}$/.test(data.settings.start)) state.start = ymd(mondayOf(parse(data.settings.start)));
-    state.weeks = data.settings.weeks || 8;
     render();
   } catch(e) {
     // The screen keeps working with the plan above; only the sheet sync is missing
@@ -261,37 +263,14 @@ async function toggle(habitId, date){
 /* ---------- 4. Screens ---------- */
 const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 
-function renderWeek(){
-  const ws = addDays(mondayOf(today()), ui.weekOffset*7);
-  const isCurrent = ui.weekOffset===0, t = ymd(today());
-  const goalsHtml = state.goals.map(g => {
-    const hs = habitsOf(g.id); if(!hs.length) return '';
-    const rows = hs.map(h => {
-      const done = doneInWeek(h, ws), p = pct(done, h.target);
-      const days = LETTERS.map((L,i) => {
-        const d = ymd(addDays(ws,i)), on = isDone(h.id,d);
-        return `<button class="day${on?' done':''}${d===t?' today':''}" data-act="toggle" data-h="${esc(h.id)}" data-d="${d}" ${d>t?'disabled':''} aria-label="${L} ${d}" aria-pressed="${on}">${L}</button>`;
-      }).join('');
-      return `<div class="task${done>=h.target?' hit':''}">
-        <div class="task-main">
-          <div class="t-top"><span class="t-name">${esc(h.name)}</span><span class="t-score num"><b>${done}</b>/${h.target}<span class="t-pct">${p}%</span></span></div>
-          <div class="days">${days}</div>
-        </div>
-      </div>`;
-    }).join('');
-    return `<section class="goal-group"><h2 class="goal-title">${esc(g.name)}</h2><div class="tasks">${rows}</div></section>`;
-  }).join('');
-  return `
-    <header class="weekhead">
-      <button class="arrow" data-act="prev" aria-label="Previous week" ${ws<=parse(state.start)?'disabled':''}>‹</button>
-      <div style="text-align:center"><h1>${isCurrent?'This week':'Week '+isoWeek(ws)}</h1><p class="muted" style="margin:4px 0 0">Week ${isoWeek(ws)} · ${rangeLabel(ws,7)}</p></div>
-      <button class="arrow" data-act="next" aria-label="Next week" ${isCurrent?'disabled':''}>›</button>
-    </header>
-    <p class="label" style="margin:4px 2px -4px">In ${state.weeks || BLOCK} weeks, I'll be…</p>
-    ${goalsHtml}`;
+/* Everything runs in 30-day cycles. Target = times in 30 days.
+   Expected = target spread evenly over the days so far (day 15 of 30 = half the target). */
+const cycleStart = n => addDays(parse(state.start), n*CYCLE_DAYS);
+const currentCycle = () => Math.max(0, Math.floor(Math.round((today() - parse(state.start))/DAY) / CYCLE_DAYS));
+function doneBetween(h, from, to){
+  let n = 0; for(let d = from; d <= to; d = addDays(d,1)) if(isDone(h.id, ymd(d))) n++;
+  return n;
 }
-
-/* Expected so far = weekly target × weeks started (week 1 = 1×, week 2 = 2×, ...) */
 function habitStatus(done, expected){
   const d = done - expected;
   if(d > 0) return { cls:'pos', text:`+${d}`, ok:true };
@@ -299,35 +278,65 @@ function habitStatus(done, expected){
   return { cls:'neg', text:`−${-d}`, ok:false };
 }
 
+function renderWeek(){
+  const cur = currentCycle(), n = Math.max(0, cur + ui.weekOffset), isCur = n === cur;
+  const cs = cycleStart(n), t = today(), tk = ymd(t);
+  const dayN = isCur ? Math.round((t - cs)/DAY) + 1 : CYCLE_DAYS;
+  const goalsHtml = state.goals.map(g => {
+    const hs = habitsOf(g.id); if(!hs.length) return '';
+    const rows = hs.map(h => {
+      const done = doneBetween(h, cs, addDays(cs, CYCLE_DAYS-1)), p = pct(done, h.target);
+      let cells = '';
+      for(let i=0; i<CYCLE_DAYS; i++){
+        const d = addDays(cs,i), k = ymd(d), on = isDone(h.id,k);
+        cells += `<button class="day${on?' done':''}${k===tk?' today':''}" data-act="toggle" data-h="${esc(h.id)}" data-d="${k}" ${d>t?'disabled':''} aria-label="${d.getDate()} ${MONTHS[d.getMonth()]}" aria-pressed="${on}">${d.getDate()}</button>`;
+      }
+      return `<div class="task${done>=h.target?' hit':''}">
+        <div class="task-main">
+          <div class="t-top"><span class="t-name">${esc(h.name)}</span><span class="t-score num"><b>${done}</b>/${h.target}<span class="t-pct">${p}%</span></span></div>
+          <div class="grid30">${cells}</div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<section class="goal-group"><h2 class="goal-title">${esc(g.name)}</h2><div class="tasks">${rows}</div></section>`;
+  }).join('');
+  return `
+    <header class="weekhead">
+      <button class="arrow" data-act="prev" aria-label="Previous cycle" ${n<=0?'disabled':''}>‹</button>
+      <div style="text-align:center"><h1>Day ${dayN} of ${CYCLE_DAYS}</h1><p class="muted" style="margin:4px 0 0">${rangeLabel(cs, CYCLE_DAYS)} · Cycle ${n+1}</p></div>
+      <button class="arrow" data-act="next" aria-label="Next cycle" ${isCur?'disabled':''}>›</button>
+    </header>
+    <p class="label" style="margin:4px 2px -4px">In ${CYCLE_DAYS} days, I'll be…</p>
+    ${goalsHtml}`;
+}
+
 function renderReview(){
-  const B = state.weeks || BLOCK, start = parse(state.start), t = today(), nowW = mondayOf(t);
-  if(nowW < start) return `<section class="empty"><h2>Your plan starts on ${rangeLabel(start,1)}</h2></section>`;
-  const current = Math.floor(weeksBetween(start, nowW)/B);
-  let html = `<header><p class="label">${B}-week review</p><h1 style="font-size:34px">How am I doing?</h1></header>`;
+  const t = today();
+  if(t < parse(state.start)) return `<section class="empty"><h2>Your plan starts on ${rangeLabel(parse(state.start),1)}</h2></section>`;
+  const current = currentCycle();
+  let html = `<header><p class="label">${CYCLE_DAYS}-day review</p><h1 style="font-size:34px">How am I doing?</h1></header>`;
   for(let n=current; n>=0; n--){
-    const bs = addDays(start, n*B*7), isCur = n===current;
-    const weeksIn = isCur ? weeksBetween(bs, nowW)+1 : B;
+    const cs = cycleStart(n), ce = addDays(cs, CYCLE_DAYS-1), isCur = n===current;
+    const upto = isCur ? t : ce, dayN = Math.round((upto - cs)/DAY) + 1;
     const all = [];
     let body = '';
     state.goals.forEach(g => {
       const hs = habitsOf(g.id); if(!hs.length) return;
-      let ge=0, gd=0;
       const rows = hs.map(h => {
-        let done = 0; for(let w=0; w<weeksIn; w++) done += doneInWeek(h, addDays(bs, w*7));
-        const expected = h.target * weeksIn;
+        const done = doneBetween(h, cs, upto);
+        const expected = Math.round(h.target * dayN / CYCLE_DAYS);
         const s = habitStatus(done, expected); all.push({ h, s });
-        ge += expected; gd += done;
-        return `<tr><td>${esc(h.name)}<span class="sub">${h.target}×/wk · ${h.target*B} in total</span></td><td class="num">${expected}</td><td class="num">${done}</td><td class="st ${s.cls}">${s.text}</td></tr>`;
+        return `<tr><td>${esc(h.name)}<span class="sub">${h.target} in ${CYCLE_DAYS} days</span></td><td class="num">${expected}</td><td class="num">${done}</td><td class="st ${s.cls}">${s.text}</td></tr>`;
       }).join('');
       body += `<tr class="g-row"><th scope="row" colspan="4">${esc(g.name)}</th></tr>${rows}`;
     });
     const good = all.filter(x => x.s.ok);
     html += `<section class="block">
-      <div class="block-head"><div><span class="pill${isCur?'':' past'}">${isCur?`In progress · week ${weeksIn} of ${B}`:'Complete'}</span>
-        <h2 style="margin-top:6px">Weeks ${isoWeek(bs)}–${isoWeek(addDays(bs,(B-1)*7))}</h2><p class="muted" style="margin:2px 0 0;font-size:14px">${rangeLabel(bs,B*7)}</p></div>
+      <div class="block-head"><div><span class="pill${isCur?'':' past'}">${isCur?`In progress · day ${dayN} of ${CYCLE_DAYS}`:'Complete'}</span>
+        <h2 style="margin-top:6px">${rangeLabel(cs, CYCLE_DAYS)}</h2><p class="muted" style="margin:2px 0 0;font-size:14px">Cycle ${n+1}</p></div>
         <div style="text-align:right"><span class="big num">${good.length}/${all.length}</span><p class="muted" style="margin:2px 0 0;font-size:13px">on track</p></div></div>
       <div style="overflow-x:auto"><table class="pvd"><thead><tr><th>Habit</th><th>Expected</th><th>Done</th><th>±</th></tr></thead><tbody>${body}</tbody></table></div>
-      ${isCur ? `<p class="hint" style="margin:0">Expected = weekly target × weeks so far (week 1 = 1×, week 2 = 2×…). ± = done minus expected.</p>` : ''}
+      ${isCur ? `<p class="hint" style="margin:0">Expected = your ${CYCLE_DAYS}-day target spread evenly over the days so far (day 15 = half the target). ± = done minus expected.</p>` : ''}
     </section>`;
   }
   return html;
