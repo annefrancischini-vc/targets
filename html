@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Targets">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<title>Weekly Targets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: one-column phone app, tracking only */
+:root{
+  --bg:#EEF1F6; --surface:#FFFFFF; --ink:#141A2B; --muted:#5B6478; --line:#D7DCE6;
+  --accent:#2B54D6; --accent-ink:#FFFFFF; --accent-soft:#DCE4FB;
+  --warn:#A86B12; --bad:#C0413A;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0C0F18; --surface:#151A27; --ink:#E7EBF4; --muted:#949CB0; --line:#262D3E;
+  --accent:#7D9BFF; --accent-ink:#0A0F1F; --accent-soft:#1D2848;
+  --warn:#E3A94B; --bad:#EE6A61; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0C0F18; --surface:#151A27; --ink:#E7EBF4; --muted:#949CB0; --line:#262D3E;
+  --accent:#7D9BFF; --accent-ink:#0A0F1F; --accent-soft:#1D2848;
+  --warn:#E3A94B; --bad:#EE6A61; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);background:var(--bg)}
+[hidden]{display:none!important}
+.stack{display:flex;flex-direction:column;gap:8px}
+.stack label{font-size:14px;font-weight:600}
+.stack .btn{margin-top:8px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+input[type=url],input[type=text]{height:44px;border-radius:10px;border:1px solid var(--line);background:var(--bg);padding:0 12px;font-size:16px;width:100%}
+.btn{height:44px;border-radius:10px;border:0;background:var(--accent);color:var(--accent-ink);font-weight:600;padding:0 16px;white-space:nowrap}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.link{background:none;border:0;color:var(--muted);font-size:13px;text-decoration:underline;padding:4px}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.4;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:12px calc(32px + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
+main{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:.01em}
+.num{font-family:var(--display);font-variant-numeric:tabular-nums}
+.label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.muted{color:var(--muted)}
+
+/* week header */
+.weekhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.weekhead h1{font-size:34px;line-height:1}
+.arrow{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-size:20px;display:grid;place-items:center}
+.arrow:disabled{opacity:.3;cursor:default}
+.score{display:flex;align-items:flex-end;gap:12px}
+.score .big{font-size:64px;line-height:.85;font-weight:700}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:4px;transition:width .3s}
+
+/* goal + habit */
+.goal{background:var(--surface);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.goal-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.goal-head h2{font-size:24px}
+.goal-head .num{font-size:24px;font-weight:700}
+.habit{display:grid;grid-template-columns:1fr auto;gap:8px 14px;align-items:center;padding-top:14px;border-top:1px solid var(--line)}
+.habit-main{min-width:0;display:flex;flex-direction:column;gap:8px}
+.h-top{display:flex;align-items:baseline;gap:8px}
+.h-name{font-weight:600;flex:1;min-width:0;overflow-wrap:anywhere}
+.h-count{font-size:22px;font-weight:700}
+.h-count small{font-size:15px;color:var(--muted);font-weight:600}
+.h-pct{font-size:15px;color:var(--muted);min-width:3.2em;text-align:right}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.day{height:30px;border-radius:8px;border:1px solid var(--line);background:transparent;font-size:12px;font-weight:600;color:var(--muted);padding:0}
+.day.done{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.day.today{border-color:var(--ink);color:var(--ink)}
+.day.today.done{color:var(--accent-ink)}
+.day:disabled{opacity:.35;cursor:default}
+.hint{font-size:14px;color:var(--muted)}
+.hint.ok{color:var(--accent)} .hint.warn{color:var(--warn)} .hint.bad{color:var(--bad)}
+.check{grid-row:1;grid-column:2;width:64px;height:64px;border-radius:50%;border:2px solid var(--accent);background:transparent;color:var(--accent);
+  display:grid;place-items:center;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;line-height:1.1;text-align:center;transition:transform .1s}
+.check:active{transform:scale(.94)}
+.check svg{width:26px;height:26px}
+.check.on{background:var(--accent);color:var(--accent-ink)}
+
+/* review */
+.block{background:var(--surface);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.block-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.block-head h2{font-size:24px}
+.block-head .big{font-size:44px;font-weight:700;line-height:.9}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;background:var(--accent-soft);color:var(--accent)}
+.pill.past{background:var(--line);color:var(--muted)}
+.insights{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.insight{border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.insight b{display:block;font-size:15px;overflow-wrap:anywhere}
+.insight.good .label{color:var(--accent)} .insight.improve .label{color:var(--bad)}
+.r-goal{display:flex;justify-content:space-between;font-family:var(--display);font-size:19px;font-weight:600;padding-top:10px;border-top:1px solid var(--line)}
+.r-habit{display:flex;flex-direction:column;gap:6px}
+.r-top{display:flex;align-items:baseline;gap:8px}
+.r-top .h-name{font-weight:500}
+.r-top .num{font-size:20px;font-weight:700}
+.weeks{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.wk{border-radius:8px;padding:4px 0;text-align:center;font-size:14px;background:color-mix(in srgb,var(--accent) var(--fill,0%),var(--bg))}
+.wk.full{color:var(--accent-ink)}
+.wk small{display:block;font-size:10px;letter-spacing:.06em;color:inherit;opacity:.75}
+.wk.na{background:transparent;border:1px dashed var(--line);color:var(--muted)}
+.diff{font-size:14px;color:var(--muted)}
+.diff .neg{color:var(--bad);font-weight:600} .diff .pos{color:var(--accent);font-weight:600}
+
+.pvd{width:100%;border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums}
+.pvd th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;text-align:right;padding:6px 0 6px 10px}
+.pvd th:first-child{text-align:left;padding-left:0}
+.pvd td{padding:8px 0 8px 10px;text-align:right;border-top:1px solid var(--line)}
+.pvd td:first-child{text-align:left;padding-left:0;overflow-wrap:anywhere}
+.pvd .g-row th,.pvd .g-row td{font-family:var(--display);font-size:19px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0;padding-top:18px}
+.pvd .g-row th{text-align:left;padding-left:0;border-top:1px solid var(--line)}
+.pvd .neg{color:var(--bad)} .pvd .pos{color:var(--accent)}
+.pvd .sub{display:block;font-size:12px;color:var(--muted)}
+.pvd .st{font-weight:600;white-space:nowrap}
+.pvd .st.neg{color:var(--bad)} .pvd .st.pos{color:var(--accent)}
+.insights.one{grid-template-columns:1fr}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.improve .chip{background:color-mix(in srgb,var(--bad) 14%,var(--surface));color:var(--bad)}
+.pvd .st{text-align:center}
+/* this week: goal = umbrella title, tasks = compact rows */
+.goal-group{display:flex;flex-direction:column;gap:8px}
+.goal-title{font-size:26px;line-height:1.1;padding-inline:2px}
+.tasks{background:var(--surface);border-radius:14px;padding:2px 14px}
+.task{display:grid;grid-template-columns:1fr;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.task:first-child{border-top:0}
+.task-main{min-width:0;display:flex;flex-direction:column;gap:6px}
+.t-top{display:flex;align-items:baseline;gap:8px}
+.t-name{flex:1;min-width:0;font-size:15px;font-weight:500;overflow-wrap:anywhere}
+.t-score{font-size:14px;color:var(--muted);white-space:nowrap}
+.t-score b{font-size:17px;color:var(--ink)}
+.t-pct{display:inline-block;min-width:3.4em;text-align:right;margin-left:4px;font-weight:600;color:var(--ink)}
+.task.hit .t-pct{color:var(--accent)}
+.task .day{height:34px;font-size:12px;border-radius:8px}
+.task .check{grid-row:auto;grid-column:auto;width:40px;height:40px;border-width:2px}
+.task .check svg{width:20px;height:20px}
+.grid30{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+.grid30 .day{height:28px;font-size:11px;border-radius:6px;padding:0;font-variant-numeric:tabular-nums}
+/* tab bar + toast */
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:5;
+  padding:6px max(16px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+nav .tabs{display:grid;grid-template-columns:repeat(2,1fr);width:100%;max-width:560px}
+nav button{background:none;border:0;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--muted);font-size:12px;font-weight:600}
+nav button svg{width:22px;height:22px}
+nav button[aria-current="page"]{color:var(--accent)}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);
+  padding:10px 16px;border-radius:10px;font-size:14px;max-width:calc(100% - 32px);z-index:6}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main id="app"><p class="muted">Loading…</p></main>
+
+
+<div id="toast" hidden></div>
+
+<script>
+/* ---------- 1. Small date helpers ---------- */
+const DAY = 864e5;
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const LETTERS = ['M','T','W','T','F','S','S'];
+const pad = n => String(n).padStart(2,'0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d); };
+const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const mondayOf = d => { const x = new Date(d.getFullYear(),d.getMonth(),d.getDate()); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x; };
+const weeksBetween = (a,b) => Math.round((b-a)/(7*DAY));
+const today = () => { const n = new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate()); };
+function isoWeek(d){
+  const t = new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  t.setUTCDate(t.getUTCDate()+4-(t.getUTCDay()||7));
+  return Math.ceil(((t-Date.UTC(t.getUTCFullYear(),0,1))/DAY+1)/7);
+}
+function rangeLabel(start, days){
+  const end = addDays(start, days-1);
+  return start.getMonth()===end.getMonth()
+    ? `${start.getDate()}–${end.getDate()} ${MONTHS[end.getMonth()]}`
+    : `${start.getDate()} ${MONTHS[start.getMonth()]} – ${end.getDate()} ${MONTHS[end.getMonth()]}`;
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- 2. Connection to your Google Sheet (saved on this phone only) ---------- */
+const conn = {
+  url: 'https://script.google.com/macros/s/AKfycby7qjQ5y6ve2310oxI9OjK5xqWQgXISorgihZdl_b9x_WhY-SKPoyfJDu7b9oLfFxz6ZQ/exec',
+  key: 'b380313a0f54',
+};
+
+async function api(method, body){
+  const res = method === 'GET'
+    ? await fetch(`${conn.url}?key=${encodeURIComponent(conn.key)}`)
+    // text/plain keeps this a "simple" request, so the browser doesn't block it (CORS)
+    : await fetch(conn.url, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({ key:conn.key, ...body }) });
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  return data;
+}
+
+/* ---------- 3. State: everything comes from the sheet ---------- */
+// Weeks start on the weekday of the start date (Wednesday), the same weeks as the English plan.
+// Target = times per week (1 to 7). The "Plan" tab of the sheet wins when it can be reached;
+// this list is only the fallback when the sheet is offline.
+const PLAN = [
+  ['healthier','no-smoking-day','no smoking',7], ['healthier','no-smoking-night','no smoking again',4],
+  ['healthier','stretching','stretching',5], ['healthier','water','drink 3 L of water',4],
+  ['lighter','gym','gym',4], ['lighter','running','running',2], ['lighter','no-sugar','no sugar',5], ['lighter','football','football',1],
+].map(([goal,id,name,target]) => ({ goal, id, name, target }));
+const START = '2026-11-25';   // first day of the plan; each week starts on this weekday
+const WEEK_DAYS = 7;
+const state = { goals:[], habits:[], checkins:new Set(), start:START, reviewWeeks:8 };   // Settings tab overrides start + weeks
+function setPlan(plan){
+  state.goals = [...new Set(plan.map(p => p.goal))].map(name => ({ id:name, name }));
+  state.habits = plan.map(p => ({ id:p.id, goalId:p.goal, name:p.name, target:Math.max(1, Math.min(WEEK_DAYS, Number(p.target)||1)) }));
+}
+setPlan(PLAN);
+const ui = { weekOffset:0 };
+
+const key = (habitId, date) => `${habitId}_${date}`;
+const isDone = (habitId, date) => state.checkins.has(key(habitId, date));
+const habitsOf = goalId => state.habits.filter(h => h.goalId === goalId);
+const pct = (done, target) => target ? Math.round(Math.min(done,target)/target*100) : 0;
+
+async function load(){
+  try {
+    const data = await api('GET');
+    if(data.plan.length) setPlan(data.plan);
+    if(data.settings){
+      if(/^\d{4}-\d{2}-\d{2}$/.test(data.settings.start)) state.start = data.settings.start;
+      if(data.settings.weeks > 0) state.reviewWeeks = data.settings.weeks;
+    }
+    state.checkins = new Set(data.checkins.map(c => key(c.habitId, c.date)));
+    render();
+  } catch(e) {
+    // The screen keeps working with the plan above; only the sheet sync is missing
+  }
+}
+
+async function toggle(habitId, date){
+  const h = state.habits.find(x => x.id === habitId);
+  const k = key(habitId, date), done = !state.checkins.has(k);
+  done ? state.checkins.add(k) : state.checkins.delete(k);   // update the screen first...
+  render();
+  try {
+    await api('POST', { habitId, date, done, habit:h?.name, goal:h?.goalId, week:weekOf(date) });
+  } catch(e) {
+    toast("Not saved to your sheet. Check your internet and tap again.");
+  }
+}
+
+/* ---------- 4. Weeks ---------- */
+/* A week starts on the weekday of the start date (start on a Wednesday → weeks run Wednesday to Tuesday).
+   Target = times per week. Expected (current week only) = target spread evenly over the days already over;
+   today never counts against you until it ends. */
+const LETTER = ['S','M','T','W','T','F','S'];   // by getDay(): Sunday = 0
+const planStart = () => parse(state.start);
+const weekStart = n => addDays(planStart(), n*WEEK_DAYS);
+const currentWeek = () => Math.max(0, Math.floor(Math.round((today() - planStart())/DAY) / WEEK_DAYS));
+const weekOf = date => Math.floor(Math.round((parse(date) - planStart())/DAY) / WEEK_DAYS) + 1;   // Week 1, 2, 3…
+function doneBetween(h, from, to){
+  let n = 0; for(let d = from; d <= to; d = addDays(d,1)) if(isDone(h.id, ymd(d))) n++;
+  return n;
+}
+const daysSoFar = n => n !== currentWeek() ? WEEK_DAYS : Math.round((today() - weekStart(n))/DAY) + 1;
+const daysOver  = n => n !== currentWeek() ? WEEK_DAYS : Math.round((today() - weekStart(n))/DAY);
+function habitStatus(done, expected){
+  const d = done - expected;
+  if(d > 0) return { cls:'pos', text:`+${d}`, ok:true };
+  if(d === 0) return { cls:'pos', text:'✓', ok:true };
+  return { cls:'neg', text:`−${-d}`, ok:false };
+}
+
+/* ---------- 5. Screens ---------- */
+function renderWeek(){
+  const cur = currentWeek(), n = Math.max(0, cur + ui.weekOffset), isCur = n === cur;
+  const ws = weekStart(n), we = addDays(ws, WEEK_DAYS-1), t = today(), tk = ymd(t);
+  let hit = 0, total = 0;
+  const goalsHtml = state.goals.map(g => {
+    const hs = habitsOf(g.id); if(!hs.length) return '';
+    const rows = hs.map(h => {
+      const tg = h.target, done = doneBetween(h, ws, we), p = pct(done, tg);
+      total++; if(done >= tg) hit++;
+      let cells = '';
+      for(let i=0; i<WEEK_DAYS; i++){
+        const d = addDays(ws,i), k = ymd(d), on = isDone(h.id,k);
+        cells += `<button class="day${on?' done':''}${k===tk?' today':''}" data-act="toggle" data-h="${esc(h.id)}" data-d="${k}" ${d>t?'disabled':''} aria-label="${d.getDate()} ${MONTHS[d.getMonth()]}" aria-pressed="${on}">${LETTER[d.getDay()]}</button>`;
+      }
+      return `<div class="task${done>=tg?' hit':''}">
+        <div class="task-main">
+          <div class="t-top"><span class="t-name">${esc(h.name)}</span><span class="t-score num"><b>${done}</b>/${tg}<span class="t-pct">${p}%</span></span></div>
+          <div class="days">${cells}</div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<section class="goal-group"><h2 class="goal-title">${esc(g.name)}</h2><div class="tasks">${rows}</div></section>`;
+  }).join('');
+  return `
+    <header class="weekhead">
+      <button class="arrow" data-act="prev" aria-label="Previous week" ${n<=0?'disabled':''}>‹</button>
+      <div style="text-align:center"><h1>Week ${n+1}</h1><p class="muted" style="margin:4px 0 0">${rangeLabel(ws, WEEK_DAYS)}${isCur?' · this week':''}</p></div>
+      <button class="arrow" data-act="next" aria-label="Next week" ${isCur?'disabled':''}>›</button>
+    </header>
+    <div class="score"><span class="big num">${hit}/${total}</span><span class="muted" style="padding-bottom:4px">habits at their weekly target</span></div>
+    ${goalsHtml}`;
+}
+
+/* ---------- 6. Render + taps ---------- */
+const app = document.getElementById('app');
+function render(){
+  app.innerHTML = renderWeek();
+}
+app.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  switch(b.dataset.act){
+    case 'toggle': toggle(b.dataset.h, b.dataset.d); return;
+    case 'prev': ui.weekOffset--; break;
+    case 'next': ui.weekOffset = Math.min(0, ui.weekOffset+1); break;
+  }
+  render();
+});
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2600);
+}
+// When you come back to the app, reload: you may have changed the sheet
+document.addEventListener('visibilitychange', () => { if(!document.hidden) load(); });
+
+render();
+load();
+</script>
+</body>
+</html>
