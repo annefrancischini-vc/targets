@@ -193,7 +193,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>'
 
 /* ---------- 2. Connection to your Google Sheet (saved on this phone only) ---------- */
 const conn = {
-  url: 'https://script.google.com/macros/s/AKfycby7qjQ5y6ve2310oxI9OjK5xqWQgXISorgihZdl_b9x_WhY-SKPoyfJDu7b9oLfFxz6ZQ/exec',
+  url: 'https://script.google.com/macros/s/AKfycbwnlPB2W6CQy83f7wXke9Cu6oV6heMC68KbRGc0MckpYs6Q2vuPBjtLqMUNZrI9mWZ1KA/exec',
   key: 'b380313a0f54',
 };
 
